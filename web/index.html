@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Distributori: il prezzo più basso vicino a te</title>
+
+  <!-- MapLibre: la libreria che disegna la mappa -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
+
+  <!-- Caratteri: Bricolage Grotesque per i prezzi, DM Sans per il resto -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=DM+Sans:wght@400;500;600&display=swap">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="mappa" aria-label="Mappa dei distributori"></main>
+
+  <!-- Pillole sopra la mappa: il testo lo scrive app.js -->
+  <p id="intestazione" class="pillola">Carico i prezzi…</p>
+  <p id="suggerimento" class="pillola" hidden>Avvicinati per vedere i prezzi</p>
+  <p id="avviso" class="pillola avviso" role="alert" hidden></p>
+
+  <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
