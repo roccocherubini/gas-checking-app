@@ -6,7 +6,9 @@
 const FILE_DATI = 'data/distributori.json';
 const CENTRO_ITALIA = [12.5, 42.3];  // MapLibre vuole [longitudine, latitudine]
 const ZOOM_GOCCE = 12;               // da questo zoom in su compaiono le gocce con il prezzo
-const MAX_GOCCE = 250;               // se nella zona ce ne sono di piu', mostriamo le piu' economiche
+const SPAZIO_GOCCIA = { x: 40, y: 46 };  // in pixel: due gocce piu' vicine di cosi' si sovrapporrebbero
+const MARGINE_VERDE = 0.015;         // fino all'1,5% sopra i piu' economici della zona -> verde (circa 3 cent)
+const MARGINE_GIALLO = 0.05;         // fino al 5% sopra -> giallo (circa 10 cent); oltre -> rosso
 const CARBURANTE = 'benzina';        // nella fase 4 diventa selezionabile dall'utente
 const MODALITA = 'self';
 
@@ -83,9 +85,10 @@ async function caricaDati() {
     `Benzina self, prezzi del ${formattaData(dati.estrazione)}`;
 }
 
-// ---------- Puntini (zoom lontano) ----------
-// Con la mappa larga mostriamo tutti i distributori come puntini:
-// li disegna MapLibre in un colpo solo, quindi e' veloce anche con 21.000 punti.
+// ---------- Puntini ----------
+// Tutti i distributori sono anche puntini: li disegna MapLibre in un colpo solo,
+// quindi e' veloce anche con 21.000 punti. Con la mappa larga si vedono solo loro;
+// da vicino restano sotto le gocce e segnano i distributori la cui goccia e' nascosta.
 
 function aggiungiPuntini() {
   mappa.addSource('distributori', {
@@ -104,7 +107,6 @@ function aggiungiPuntini() {
     id: 'puntini',
     type: 'circle',
     source: 'distributori',
-    maxzoom: ZOOM_GOCCE,  // spariscono quando arrivano le gocce
     paint: {
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 1.5, 11, 4],
       'circle-color': '#14201A',
@@ -112,9 +114,9 @@ function aggiungiPuntini() {
     },
   });
 
-  // Un clic su un puntino avvicina la mappa in quel punto
+  // Un clic su un puntino avvicina la mappa in quel punto, cosi' compare la sua goccia
   mappa.on('click', 'puntini', (evento) => {
-    mappa.easeTo({ center: evento.lngLat, zoom: ZOOM_GOCCE + 1 });
+    mappa.easeTo({ center: evento.lngLat, zoom: Math.max(mappa.getZoom() + 1.5, ZOOM_GOCCE + 1) });
   });
   mappa.on('mouseenter', 'puntini', () => { mappa.getCanvas().style.cursor = 'pointer'; });
   mappa.on('mouseleave', 'puntini', () => { mappa.getCanvas().style.cursor = ''; });
@@ -145,26 +147,36 @@ function aggiornaGocce() {
   document.getElementById('suggerimento').hidden = vicino;
   if (!vicino) return;
 
-  // 1. Distributori dentro l'area visibile che hanno il prezzo scelto, dal piu' economico
+  // 1. Distributori nell'area visibile con il prezzo scelto, dal piu' economico al piu' caro
   const area = mappa.getBounds();
   const visibili = distributori
     .filter((d) => area.contains([d.lon, d.lat]))
     .map((d) => ({ d, prezzo: d.prezzi[CARBURANTE]?.[MODALITA] }))
     .filter((v) => v.prezzo != null)
-    .sort((a, b) => a.prezzo - b.prezzo)
-    .slice(0, MAX_GOCCE);
+    .sort((a, b) => a.prezzo - b.prezzo);
 
   if (visibili.length === 0) return;
 
-  // 2. Colori: il terzo piu' economico verde, quello centrale giallo, il piu' caro rosso
-  const prezzi = visibili.map((v) => v.prezzo);
-  const sogliaVerde = prezzi[Math.floor((prezzi.length - 1) / 3)];
-  const sogliaGiallo = prezzi[Math.floor(((prezzi.length - 1) * 2) / 3)];
+  // 2. Prezzo di riferimento: il 10% dei distributori della zona costa meno di cosi'.
+  //    Non usiamo il minimo, altrimenti un solo distributore molto economico farebbe diventare tutto rosso.
+  const riferimento = visibili[Math.floor((visibili.length - 1) * 0.1)].prezzo;
 
-  // 3. Disegniamo dalla piu' cara alla piu' economica, cosi' le economiche stanno sopra
-  for (let k = visibili.length - 1; k >= 0; k--) {
-    const { d, prezzo } = visibili[k];
-    const fascia = prezzo <= sogliaVerde ? 'verde' : prezzo <= sogliaGiallo ? 'giallo' : 'rosso';
+  // 3. Scegliamo quali gocce disegnare, partendo dalle piu' economiche:
+  //    se una goccia finirebbe sopra una gia' scelta la saltiamo. Resta il puntino, e avvicinandoti compare.
+  const scelte = [];
+  for (const v of visibili) {
+    const punto = mappa.project([v.d.lon, v.d.lat]);  // posizione in pixel sullo schermo
+    const sovrapposta = scelte.some((s) =>
+      Math.abs(s.punto.x - punto.x) < SPAZIO_GOCCIA.x && Math.abs(s.punto.y - punto.y) < SPAZIO_GOCCIA.y);
+    if (!sovrapposta) scelte.push({ ...v, punto });
+  }
+
+  // 4. Disegniamo dalla piu' cara alla piu' economica, cosi' le economiche stanno sopra
+  for (let k = scelte.length - 1; k >= 0; k--) {
+    const { d, prezzo } = scelte[k];
+    const fascia = prezzo <= riferimento * (1 + MARGINE_VERDE) ? 'verde'
+      : prezzo <= riferimento * (1 + MARGINE_GIALLO) ? 'giallo'
+      : 'rosso';
     const migliore = k === 0;
 
     const elemento = crea('div', `goccia ${fascia}${migliore ? ' migliore' : ''}`);
