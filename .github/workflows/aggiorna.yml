@@ -1,0 +1,52 @@
+# Scarica i prezzi dal MIMIT, prepara il file JSON e pubblica l'app su GitHub Pages.
+# Gira da solo ogni giorno, a ogni modifica del codice e quando lo lanci a mano.
+name: Aggiorna prezzi e pubblica
+
+on:
+  schedule:
+    - cron: "0 7 * * *"    # ogni giorno alle 7:00 UTC (8:00 o 9:00 in Italia)
+    - cron: "0 13 * * *"   # e alle 13:00 UTC, nel caso il file del mattino arrivi tardi
+  push:
+    branches: [main]       # a ogni commit sul ramo principale
+  workflow_dispatch:       # pulsante "Run workflow" nella scheda Actions
+
+# Permessi minimi: leggere il codice e pubblicare su Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Se partono due pubblicazioni insieme, la seconda aspetta la prima
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  pubblica:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Scarica il codice del repository
+        uses: actions/checkout@v6
+
+      - name: Prepara Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Scarica e prepara i prezzi
+        run: python scripts/prepara_dati.py
+
+      - name: Configura GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Carica la cartella web
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: web
+
+      - name: Pubblica il sito
+        id: deployment
+        uses: actions/deploy-pages@v5
