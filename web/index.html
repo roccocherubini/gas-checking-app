@@ -18,10 +18,22 @@
 <body>
   <main id="mappa" aria-label="Mappa dei distributori"></main>
 
-  <!-- Pillole sopra la mappa: il testo lo scrive app.js -->
-  <p id="intestazione" class="pillola">Carico i prezzi…</p>
+  <!-- Scelta del carburante -->
+  <nav id="carburanti" aria-label="Carburante">
+    <button type="button" data-carburante="benzina" aria-pressed="true">Benzina</button>
+    <button type="button" data-carburante="gasolio" aria-pressed="false">Gasolio</button>
+    <button type="button" data-carburante="gpl" aria-pressed="false">GPL</button>
+    <button type="button" data-carburante="metano" aria-pressed="false">Metano</button>
+  </nav>
+
   <p id="suggerimento" class="pillola" hidden>Avvicinati per vedere i prezzi</p>
   <p id="avviso" class="pillola avviso" role="alert" hidden></p>
+
+  <!-- Riquadro in basso: il piu' economico della zona (il contenuto lo scrive app.js) -->
+  <section id="migliore" class="pannello" aria-label="Il più economico in questa zona" hidden></section>
+
+  <!-- Scheda del distributore selezionato (il contenuto lo scrive app.js) -->
+  <section id="scheda" class="pannello" role="dialog" aria-labelledby="scheda-titolo" hidden></section>
 
   <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
   <script src="app.js"></script>
