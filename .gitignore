@@ -1,0 +1,4 @@
+# Dati scaricati o generati: si ricreano con gli script
+dati/
+web/data/
+__pycache__/
